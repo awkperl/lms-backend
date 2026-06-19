@@ -1,13 +1,13 @@
 //const pool = require("../config/db");
 
 /**exports.create = async (req,res)=>{
-  const {course_id,title} = req.body;
-  const r = await pool.query(
-    "INSERT INTO assignments(course_id,title) VALUES($1,$2) RETURNING *",
-    [course_id,title]
-  );
-  res.json(r.rows[0]);
-};**/
+  //const {course_id,title} = req.body;
+  //const r = await pool.query(
+    //"INSERT INTO assignments(course_id,title) VALUES($1,$2) RETURNING *",
+    //[course_id,title]
+ // );
+ // res.json(r.rows[0]);
+//};**/
 /** 
 exports.getByCourse = async (req,res)=>{
   const r = await pool.query(
