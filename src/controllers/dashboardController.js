@@ -90,7 +90,7 @@ exports.getDashboard = async (req, res) => {
     // STUDENT
     if (role === "student") {
 
-     /**  const submissionCount =
+      const submissionCount =
       await pool.query(
         `SELECT COUNT(*)
          FROM submissions
@@ -117,36 +117,8 @@ exports.getDashboard = async (req, res) => {
         WHERE student_id=$1
         `,
         [userId]
-      );**/
+      );
 
-      const submissionCount =
-await pool.query(
-  `SELECT COUNT(*)
-   FROM submissions
-   WHERE user_id=$1`,
-  [userId]
-);
-
-const avgScore =
-await pool.query(
-  `
-  SELECT AVG(g.score) avg
-  FROM grades g
-  JOIN submissions s
-  ON g.submission_id = s.id
-  WHERE s.user_id = $1
-  `,
-  [userId]
-);
-const quizAttempts =
-await pool.query(
-  `
-  SELECT COUNT(*)
-  FROM quiz_attempts
-  WHERE user_id=$1
-  `,
-  [userId]
-);
 
       analytics = {
 

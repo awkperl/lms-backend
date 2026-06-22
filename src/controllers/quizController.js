@@ -47,7 +47,7 @@ exports.startQuiz = async (req, res) => {
     const endTime = new Date(now.getTime() + quiz.time_limit * 60000);
 
     const attempt = await pool.query(
-      `INSERT INTO quiz_attempts (quiz_id, student_id, start_time, end_time)
+      `INSERT INTO quiz_attempts (quiz_id, user_id, start_time, end_time)
        VALUES ($1,$2,$3,$4) RETURNING *`,
       [quiz_id, req.user.id, now, endTime]
     );
