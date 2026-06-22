@@ -1,4 +1,4 @@
-const multer = require("multer");
+/**const multer = require("multer");
 const path = require("path");
 
 const storage = multer.diskStorage({
@@ -12,4 +12,18 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage });
 
-module.exports = upload;
+module.exports = upload;**/
+
+const multer = require("multer");
+const { CloudinaryStorage } = require("multer-storage-cloudinary");
+const cloudinary = require("./cloudinary");
+
+const storage = new CloudinaryStorage({
+  cloudinary,
+  params: {
+    folder: "lms_uploads",
+    resource_type: "auto"
+  }
+});
+
+module.exports = multer({ storage });
