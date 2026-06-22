@@ -165,18 +165,18 @@ exports.createQuestion = async (req, res) => {
 
     const {
       quiz_id,
-      question_text,
+      question,
       correct_answer
     } = req.body;
 
     const result = await pool.query(
       `INSERT INTO questions
-       (quiz_id, question_text, correct_answer)
+       (quiz_id, question, correct_answer)
        VALUES ($1,$2,$3)
        RETURNING *`,
       [
         quiz_id,
-        question_text,
+        question,
         correct_answer
       ]
     );
