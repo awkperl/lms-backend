@@ -114,7 +114,7 @@ exports.getDashboard = async (req, res) => {
         `
         SELECT COUNT(*)
         FROM quiz_attempts
-        WHERE student_id=$1
+        WHERE user_id=$1
         `,
         [userId]
       );
