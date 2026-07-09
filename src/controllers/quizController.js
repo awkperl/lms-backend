@@ -57,7 +57,7 @@ exports.getQuizzes = async (req, res) => {
   }
 
 };
-exports.startQuiz = async (req, res) => {
+/**exports.startQuiz = async (req, res) => {
   try {
     const { quiz_id } = req.body;
 
@@ -94,6 +94,59 @@ exports.startQuiz = async (req, res) => {
 
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+};**/
+exports.startQuiz = async (req, res) => {
+  try {
+
+    const { quiz_id } = req.body;
+
+    const quizRes = await pool.query(
+      "SELECT * FROM quizzes WHERE id=$1",
+      [quiz_id]
+    );
+
+    if (quizRes.rows.length === 0) {
+      return res.status(404).json({
+        msg: "Quiz not found"
+      });
+    }
+
+    const quiz = quizRes.rows[0];
+
+    const now = new Date();
+
+    const endTime = new Date(
+      now.getTime() + quiz.time_limit * 60000
+    );
+
+    const attempt = await pool.query(
+      `INSERT INTO quiz_attempts
+      (quiz_id, student_id, start_time, end_time, submitted)
+      VALUES ($1,$2,$3,$4,$5)
+      RETURNING *`,
+      [
+        quiz_id,
+        req.user.id,
+        now,
+        endTime,
+        false
+      ]
+    );
+
+    res.json({
+      message: "Quiz started successfully",
+      attempt: attempt.rows[0]
+    });
+
+  } catch (err) {
+
+    console.error(err);
+
+    res.status(500).json({
+      error: err.message
+    });
+
   }
 };
 exports.saveAnswer = async (req, res) => {
