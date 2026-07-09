@@ -149,7 +149,7 @@ exports.startQuiz = async (req, res) => {
 
   }
 };
-exports.saveAnswer = async (req, res) => {
+/**exports.saveAnswer = async (req, res) => {
   try {
     const { attempt_id, question_id, answer } = req.body;
 
@@ -164,6 +164,48 @@ exports.saveAnswer = async (req, res) => {
 
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+};**/
+exports.saveAnswer = async (req, res) => {
+  try {
+
+    const {
+      attempt_id,
+      question_id,
+      answer
+    } = req.body;
+
+    const result = await pool.query(
+      `
+      INSERT INTO answers
+      (attempt_id, question_id, answer)
+      VALUES ($1,$2,$3)
+
+      ON CONFLICT (attempt_id, question_id)
+
+      DO UPDATE
+      SET answer = EXCLUDED.answer
+
+      RETURNING *;
+      `,
+      [
+        attempt_id,
+        question_id,
+        answer
+      ]
+    );
+
+    res.json({
+      message: "Answer saved",
+      answer: result.rows[0]
+    });
+
+  } catch (err) {
+
+    res.status(500).json({
+      error: err.message
+    });
+
   }
 };
 exports.submitQuiz = async (req, res) => {
