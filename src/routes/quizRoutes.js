@@ -55,6 +55,12 @@ const router = express.Router();
 const auth = require("../middleware/auth");
 const quizController = require("../controllers/quizController");
 
+router.post(
+  "/",
+  auth,
+  quizController.createQuiz
+);
+
 // GET QUIZZES
 router.get("/", auth, quizController.getQuizzes);
 

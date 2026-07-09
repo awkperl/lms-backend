@@ -1,5 +1,43 @@
 const pool = require("../config/db");
 
+exports.createQuiz = async (req, res) => {
+  try {
+
+    const {
+      course_id,
+      title,
+      time_limit
+    } = req.body;
+
+    if (!course_id || !title || !time_limit) {
+      return res.status(400).json({
+        msg: "course_id, title and time_limit are required"
+      });
+    }
+
+    const result = await pool.query(
+      `INSERT INTO quizzes
+      (course_id, title, time_limit)
+      VALUES ($1,$2,$3)
+      RETURNING *`,
+      [
+        course_id,
+        title,
+        time_limit
+      ]
+    );
+
+    res.status(201).json(result.rows[0]);
+
+  } catch (err) {
+
+    res.status(500).json({
+      error: err.message
+    });
+
+  }
+};
+
 exports.getQuizzes = async (req, res) => {
 
   try {
@@ -111,12 +149,12 @@ exports.submitQuiz = async (req, res) => {
   }
 };
 // GET ALL QUIZZES
-exports.getQuizzes = async (req, res) => {
+/**exports.getQuizzes = async (req, res) => {
   try {
 
-    /**const result = await pool.query(
+    const result = await pool.query(
       "SELECT * FROM quizzes ORDER BY created_at DESC"
-    );**/
+    );
     const result = await pool.query(
   "SELECT * FROM quizzes ORDER BY title ASC"
 );
@@ -130,7 +168,7 @@ exports.getQuizzes = async (req, res) => {
     });
 
   }
-};
+};**/
 
 // GET QUIZ QUESTIONS
 exports.getQuizQuestions = async (req, res) => {
