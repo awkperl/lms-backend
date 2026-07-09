@@ -198,7 +198,7 @@ exports.getQuizQuestions = async (req, res) => {
 
   }
 };
-exports.createQuestion = async (req, res) => {
+/**exports.createQuestion = async (req, res) => {
   try {
 
     const {
@@ -220,6 +220,39 @@ exports.createQuestion = async (req, res) => {
     );
 
     res.json(result.rows[0]);
+
+  } catch (err) {
+
+    res.status(500).json({
+      error: err.message
+    });
+
+  }
+};**/
+exports.createQuestion = async (req, res) => {
+  try {
+
+    const {
+      quiz_id,
+      question,
+      options,
+      correct_answer
+    } = req.body;
+
+    const result = await pool.query(
+      `INSERT INTO questions
+      (quiz_id, question, options, correct_answer)
+      VALUES ($1,$2,$3,$4)
+      RETURNING *`,
+      [
+        quiz_id,
+        question,
+        options,
+        correct_answer
+      ]
+    );
+
+    res.status(201).json(result.rows[0]);
 
   } catch (err) {
 
