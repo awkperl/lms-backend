@@ -238,6 +238,10 @@ exports.createQuestion = async (req, res) => {
       options,
       correct_answer
     } = req.body;
+    console.log(req.body);
+console.log(req.body.options);
+console.log(typeof req.body.options);
+console.log(Array.isArray(req.body.options));
 
     const result = await pool.query(
       `INSERT INTO questions
