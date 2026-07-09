@@ -208,7 +208,7 @@ exports.saveAnswer = async (req, res) => {
 
   }
 };
-exports.submitQuiz = async (req, res) => {
+/**exports.submitQuiz = async (req, res) => {
   try {
     const { attempt_id } = req.body;
 
@@ -242,7 +242,7 @@ exports.submitQuiz = async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
-};
+};**/
 // GET ALL QUIZZES
 /**exports.getQuizzes = async (req, res) => {
   try {
@@ -264,6 +264,117 @@ exports.submitQuiz = async (req, res) => {
 
   }
 };**/
+
+exports.submitQuiz = async (req, res) => {
+  try {
+
+    const { attempt_id } = req.body;
+
+    // Get attempt
+    const attemptRes = await pool.query(
+      `SELECT *
+       FROM quiz_attempts
+       WHERE id=$1`,
+      [attempt_id]
+    );
+
+    if (attemptRes.rows.length === 0) {
+      return res.status(404).json({
+        msg: "Quiz attempt not found"
+      });
+    }
+
+    const attempt = attemptRes.rows[0];
+
+    // Prevent multiple submissions
+    if (attempt.submitted) {
+      return res.status(400).json({
+        msg: "Quiz already submitted"
+      });
+    }
+
+    // Time validation
+    const now = new Date();
+
+    if (attempt.end_time && now > attempt.end_time) {
+      return res.status(400).json({
+        msg: "Time expired"
+      });
+    }
+
+    // Get all saved answers
+    const answersRes = await pool.query(
+      `
+      SELECT
+          a.question_id,
+          a.answer,
+          q.correct_answer
+      FROM answers a
+      JOIN questions q
+      ON a.question_id=q.id
+      WHERE a.attempt_id=$1
+      `,
+      [attempt_id]
+    );
+
+    let score = 0;
+
+    answersRes.rows.forEach(ans => {
+
+      if (
+        ans.answer &&
+        ans.correct_answer &&
+        ans.answer.trim().toLowerCase() ===
+        ans.correct_answer.trim().toLowerCase()
+      ) {
+        score++;
+      }
+
+    });
+
+    // Save score
+    await pool.query(
+      `
+      UPDATE quiz_attempts
+      SET
+          score=$1,
+          submitted=TRUE
+      WHERE id=$2
+      `,
+      [
+        score,
+        attempt_id
+      ]
+    );
+
+    res.json({
+
+      message: "Quiz submitted successfully",
+
+      totalQuestions: answersRes.rows.length,
+
+      score,
+
+      percentage:
+        answersRes.rows.length === 0
+          ? 0
+          : Math.round(
+              score * 100 /
+              answersRes.rows.length
+            )
+
+    });
+
+  } catch (err) {
+
+    console.error(err);
+
+    res.status(500).json({
+      error: err.message
+    });
+
+  }
+};
 
 // GET QUIZ QUESTIONS
 exports.getQuizQuestions = async (req, res) => {
