@@ -229,7 +229,7 @@ exports.getQuizQuestions = async (req, res) => {
 
   }
 };**/
-exports.createQuestion = async (req, res) => {
+/**exports.createQuestion = async (req, res) => {
   try {
 
     const {
@@ -238,12 +238,7 @@ exports.createQuestion = async (req, res) => {
       options,
       correct_answer
     } = req.body;
-    console.log(req.body);
-console.log(req.body.options);
-console.log(typeof req.body.options);
-console.log(Array.isArray(req.body.options));
-
-    /**const result = await pool.query(
+    const result = await pool.query(
       `INSERT INTO questions
       (quiz_id, question, options, correct_answer)
       VALUES ($1,$2,$3,$4)
@@ -254,19 +249,7 @@ console.log(Array.isArray(req.body.options));
         options,
         correct_answer
       ]
-    );**/
-    const result = await pool.query(
-  `INSERT INTO questions
-   (quiz_id, question, options, correct_answer)
-   VALUES ($1,$2,$3::jsonb,$4)
-   RETURNING *`,
-  [
-    quiz_id,
-    question,
-    JSON.stringify(options),
-    correct_answer
-  ]
-);
+    );
 
     res.status(201).json(result.rows[0]);
 
@@ -277,4 +260,11 @@ console.log(Array.isArray(req.body.options));
     });
 
   }
+};**/
+exports.createQuestion = async (req, res) => {
+
+  console.log("BODY:", req.body);
+
+  return res.json(req.body);
+
 };
