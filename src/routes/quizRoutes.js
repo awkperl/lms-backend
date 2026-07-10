@@ -66,6 +66,12 @@ router.put(
   quizController.updateQuiz
 );
 
+router.delete(
+  "/:id",
+  auth,
+  quizController.deleteQuiz
+);
+
 router.put(
   "/question/:id",
   auth,
