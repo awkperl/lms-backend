@@ -510,3 +510,92 @@ exports.createQuestion = async (req, res) => {
 
   }
 };
+
+/**exports.createQuestion = async (req, res) => {
+
+  try {
+
+    const {
+      quiz_id,
+      question,
+      options,
+      correct_answer
+    } = req.body;
+
+    const result = await pool.query(
+
+      `INSERT INTO questions
+      (quiz_id, question, options, correct_answer)
+      VALUES ($1,$2,$3::jsonb,$4)
+      RETURNING *`,
+
+      [
+        quiz_id,
+        question,
+        options
+          ? JSON.stringify(options)
+          : null,
+        correct_answer
+      ]
+
+    );
+
+    res.status(201).json(
+      result.rows[0]
+    );
+
+  } catch (err) {
+
+    console.error(err);
+
+    res.status(500).json({
+      error: err.message
+    });
+
+  }
+
+};**/
+exports.createQuestion = async (req, res) => {
+
+  try {
+
+    const {
+      quiz_id,
+      question,
+      options,
+      correct_answer
+    } = req.body;
+
+    const result = await pool.query(
+
+      `INSERT INTO questions
+      (quiz_id, question, options, correct_answer)
+      VALUES ($1,$2,$3::jsonb,$4)
+      RETURNING *`,
+
+      [
+        quiz_id,
+        question,
+        options
+          ? JSON.stringify(options)
+          : null,
+        correct_answer
+      ]
+
+    );
+
+    res.status(201).json(
+      result.rows[0]
+    );
+
+  } catch (err) {
+
+    console.error(err);
+
+    res.status(500).json({
+      error: err.message
+    });
+
+  }
+
+};
