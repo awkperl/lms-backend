@@ -66,6 +66,11 @@ router.put(
   auth,
   quizController.updateQuestion
 );
+router.delete(
+  "/question/:id",
+  auth,
+  quizController.deleteQuestion
+);
 
 // GET QUIZZES
 router.get("/", auth, quizController.getQuizzes);
