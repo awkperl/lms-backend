@@ -37,7 +37,61 @@ exports.createQuiz = async (req, res) => {
 
   }
 };
+exports.updateQuiz = async (req, res) => {
 
+  try {
+
+    const { id } = req.params;
+
+    const {
+      title,
+      time_limit
+    } = req.body;
+
+    const result = await pool.query(
+
+      `UPDATE quizzes
+       SET
+         title = $1,
+         time_limit = $2
+       WHERE id = $3
+       RETURNING *`,
+
+      [
+        title,
+        time_limit,
+        id
+      ]
+
+    );
+
+    if (result.rows.length === 0) {
+
+      return res.status(404).json({
+
+        error: "Quiz not found."
+
+      });
+
+    }
+
+    res.json(result.rows[0]);
+
+  }
+
+  catch (err) {
+
+    console.error(err);
+
+    res.status(500).json({
+
+      error: err.message
+
+    });
+
+  }
+
+};
 
 exports.updateQuestion = async (req, res) => {
 

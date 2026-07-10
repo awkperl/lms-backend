@@ -60,6 +60,11 @@ router.post(
   auth,
   quizController.createQuiz
 );
+router.put(
+  "/:id",
+  auth,
+  quizController.updateQuiz
+);
 
 router.put(
   "/question/:id",
