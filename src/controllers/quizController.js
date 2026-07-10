@@ -99,6 +99,30 @@ exports.deleteQuestion = async (req, res) => {
 
     const { id } = req.params;
 
+    // CHECK IF ANY STUDENT HAS ANSWERED THIS QUESTION
+    const used = await pool.query(
+
+      `SELECT id
+       FROM answers
+       WHERE question_id = $1
+       LIMIT 1`,
+
+      [id]
+
+    );
+
+    if (used.rows.length > 0) {
+
+      return res.status(400).json({
+
+        error:
+          "This question has already been attempted by students and cannot be deleted."
+
+      });
+
+    }
+
+    // DELETE QUESTION
     const result = await pool.query(
 
       `DELETE FROM questions
@@ -112,21 +136,29 @@ exports.deleteQuestion = async (req, res) => {
     if (result.rows.length === 0) {
 
       return res.status(404).json({
-        error: "Question not found"
+
+        error: "Question not found."
+
       });
 
     }
 
     res.json({
+
       message: "Question deleted successfully."
+
     });
 
-  } catch (err) {
+  }
+
+  catch (err) {
 
     console.error(err);
 
     res.status(500).json({
+
       error: err.message
+
     });
 
   }
