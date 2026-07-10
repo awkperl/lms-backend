@@ -38,6 +38,61 @@ exports.createQuiz = async (req, res) => {
   }
 };
 
+
+exports.updateQuestion = async (req, res) => {
+
+  try {
+
+    const { id } = req.params;
+
+    const {
+      question,
+      options,
+      correct_answer
+    } = req.body;
+
+    const result = await pool.query(
+
+      `UPDATE questions
+       SET question = $1,
+           options = $2::jsonb,
+           correct_answer = $3
+       WHERE id = $4
+       RETURNING *`,
+
+      [
+        question,
+        options
+          ? JSON.stringify(options)
+          : null,
+        correct_answer,
+        id
+      ]
+
+    );
+
+    if (result.rows.length === 0) {
+
+      return res.status(404).json({
+        error: "Question not found"
+      });
+
+    }
+
+    res.json(result.rows[0]);
+
+  } catch (err) {
+
+    console.error(err);
+
+    res.status(500).json({
+      error: err.message
+    });
+
+  }
+
+};
+
 exports.getQuizzes = async (req, res) => {
 
   try {
@@ -57,45 +112,6 @@ exports.getQuizzes = async (req, res) => {
   }
 
 };
-/**exports.startQuiz = async (req, res) => {
-  try {
-    const { quiz_id } = req.body;
-
-    const quizRes = await pool.query(
-      "SELECT * FROM quizzes WHERE id=$1",
-      [quiz_id]
-    );
-
-    const quiz = quizRes.rows[0];
-
-    if (!quiz) return res.status(404).json({ msg: "Quiz not found" });
-
-    const now = new Date();
-
-    // Availability check
-    if (quiz.available_from && now < quiz.available_from) {
-      return res.status(400).json({ msg: "Quiz not yet available" });
-    }
-
-    if (quiz.due_at && now > quiz.due_at) {
-      return res.status(400).json({ msg: "Quiz expired" });
-    }
-
-    // Create attempt
-    const endTime = new Date(now.getTime() + quiz.time_limit * 60000);
-
-    const attempt = await pool.query(
-      `INSERT INTO quiz_attempts (quiz_id, user_id, start_time, end_time)
-       VALUES ($1,$2,$3,$4) RETURNING *`,
-      [quiz_id, req.user.id, now, endTime]
-    );
-
-    res.json(attempt.rows[0]);
-
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-};**/
 exports.startQuiz = async (req, res) => {
   try {
 
@@ -149,23 +165,7 @@ exports.startQuiz = async (req, res) => {
 
   }
 };
-/**exports.saveAnswer = async (req, res) => {
-  try {
-    const { attempt_id, question_id, answer } = req.body;
 
-    await pool.query(
-      `INSERT INTO answers (attempt_id, question_id, answer)
-       VALUES ($1,$2,$3)
-       ON CONFLICT DO NOTHING`,
-      [attempt_id, question_id, answer]
-    );
-
-    res.json({ msg: "Answer saved" });
-
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-};**/
 exports.saveAnswer = async (req, res) => {
   try {
 
@@ -208,62 +208,6 @@ exports.saveAnswer = async (req, res) => {
 
   }
 };
-/**exports.submitQuiz = async (req, res) => {
-  try {
-    const { attempt_id } = req.body;
-
-    const attemptRes = await pool.query(
-      "SELECT * FROM quiz_attempts WHERE id=$1",
-      [attempt_id]
-    );
-
-    const attempt = attemptRes.rows[0];
-
-    if (!attempt) {
-      return res.status(404).json({ msg: "Attempt not found" });
-    }
-
-    const now = new Date();
-
-    // Autosubmission
-    if (now > attempt.end_time) {
-      return res.status(400).json({
-        msg: "Time expired. Auto-submitted."
-      });
-    }
-
-    await pool.query(
-      "UPDATE quiz_attempts SET submitted=true WHERE id=$1",
-      [attempt_id]
-    );
-
-    res.json({ msg: "Quiz submitted successfully" });
-
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-};**/
-// GET ALL QUIZZES
-/**exports.getQuizzes = async (req, res) => {
-  try {
-
-    const result = await pool.query(
-      "SELECT * FROM quizzes ORDER BY created_at DESC"
-    );
-    const result = await pool.query(
-  "SELECT * FROM quizzes ORDER BY title ASC"
-);
-
-    res.json(result.rows);
-
-  } catch (err) {
-
-    res.status(500).json({
-      error: err.message
-    });
-
-  }
-};**/
 
 exports.submitQuiz = async (req, res) => {
   try {
@@ -404,76 +348,7 @@ exports.getQuizQuestions = async (req, res) => {
 
   }
 };
-/**exports.createQuestion = async (req, res) => {
-  try {
 
-    const {
-      quiz_id,
-      question,
-      correct_answer
-    } = req.body;
-
-    const result = await pool.query(
-      `INSERT INTO questions
-       (quiz_id, question, correct_answer)
-       VALUES ($1,$2,$3)
-       RETURNING *`,
-      [
-        quiz_id,
-        question,
-        correct_answer
-      ]
-    );
-
-    res.json(result.rows[0]);
-
-  } catch (err) {
-
-    res.status(500).json({
-      error: err.message
-    });
-
-  }
-};**/
-/**exports.createQuestion = async (req, res) => {
-  try {
-
-    const {
-      quiz_id,
-      question,
-      options,
-      correct_answer
-    } = req.body;
-    const result = await pool.query(
-      `INSERT INTO questions
-      (quiz_id, question, options, correct_answer)
-      VALUES ($1,$2,$3,$4)
-      RETURNING *`,
-      [
-        quiz_id,
-        question,
-        options,
-        correct_answer
-      ]
-    );
-
-    res.status(201).json(result.rows[0]);
-
-  } catch (err) {
-
-    res.status(500).json({
-      error: err.message
-    });
-
-  }
-};**/
-/**exports.createQuestion = async (req, res) => {
-
-  console.log("BODY:", req.body);
-
-  return res.json(req.body);
-
-};**/
 exports.createQuestion = async (req, res) => {
   try {
 
@@ -511,50 +386,7 @@ exports.createQuestion = async (req, res) => {
   }
 };
 
-/**exports.createQuestion = async (req, res) => {
 
-  try {
-
-    const {
-      quiz_id,
-      question,
-      options,
-      correct_answer
-    } = req.body;
-
-    const result = await pool.query(
-
-      `INSERT INTO questions
-      (quiz_id, question, options, correct_answer)
-      VALUES ($1,$2,$3::jsonb,$4)
-      RETURNING *`,
-
-      [
-        quiz_id,
-        question,
-        options
-          ? JSON.stringify(options)
-          : null,
-        correct_answer
-      ]
-
-    );
-
-    res.status(201).json(
-      result.rows[0]
-    );
-
-  } catch (err) {
-
-    console.error(err);
-
-    res.status(500).json({
-      error: err.message
-    });
-
-  }
-
-};**/
 exports.createQuestion = async (req, res) => {
 
   try {
