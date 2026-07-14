@@ -357,10 +357,30 @@ exports.startQuiz = async (req, res) => {
       ]
     );
 
-    res.json({
-      message: "Quiz started successfully",
-      attempt: attempt.rows[0]
-    });
+   // Load quiz questions (student version)
+const questions = await pool.query(
+`
+SELECT
+    id,
+    question,
+    options
+FROM questions
+WHERE quiz_id = $1
+ORDER BY id ASC
+`,
+[quiz_id]
+);
+res.json({
+
+  message: "Quiz started successfully",
+
+  attempt: attempt.rows[0],
+
+  quiz,
+
+  questions: questions.rows
+
+});
 
   } catch (err) {
 
@@ -540,9 +560,13 @@ exports.getQuizQuestions = async (req, res) => {
      // [quizId]
    // );**/
     const questions = await pool.query(
-  `SELECT * FROM questions
-   WHERE quiz_id=$1`,
-  [quizId]
+`
+SELECT *
+FROM questions
+WHERE quiz_id=$1
+ORDER BY id ASC
+`,
+[quizId]
 );
 
     res.json(questions.rows);
@@ -594,7 +618,7 @@ exports.createQuestion = async (req, res) => {
 };
 
 
-exports.createQuestion = async (req, res) => {
+/**exports.createQuestion = async (req, res) => {
 
   try {
 
@@ -637,4 +661,4 @@ exports.createQuestion = async (req, res) => {
 
   }
 
-};
+};**/
