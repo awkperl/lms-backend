@@ -182,28 +182,44 @@ exports.updateQuestion = async (req, res) => {
     const { id } = req.params;
 
     const {
-      question,
-      options,
-      correct_answer
+    question,
+    type,
+    options,
+    correct_answer,
+    points
     } = req.body;
 
     const result = await pool.query(
 
       `UPDATE questions
-       SET question = $1,
-           options = $2::jsonb,
-           correct_answer = $3
-       WHERE id = $4
-       RETURNING *`,
+SET
 
-      [
-        question,
-        options
-          ? JSON.stringify(options)
-          : null,
-        correct_answer,
-        id
-      ]
+question=$1,
+
+type=$2,
+
+options=$3::jsonb,
+
+correct_answer=$4,
+
+points=$5
+
+WHERE id=$6
+
+RETURNING *`,
+
+      
+        [
+    question,
+    type,
+    options
+        ? JSON.stringify(options)
+        : null,
+    correct_answer,
+    points,
+    id
+]
+      
 
     );
 
@@ -361,11 +377,21 @@ exports.startQuiz = async (req, res) => {
 const questions = await pool.query(
 `
 SELECT
-    id,
-    question,
-    options
+
+id,
+
+question,
+
+type,
+
+options,
+
+points
+
 FROM questions
-WHERE quiz_id = $1
+
+WHERE quiz_id=$1
+
 ORDER BY id ASC
 `,
 [quiz_id]
@@ -561,7 +587,13 @@ exports.getQuizQuestions = async (req, res) => {
    // );**/
     const questions = await pool.query(
 `
-SELECT *
+SELECT
+id,
+question,
+type,
+options,
+correct_answer,
+points
 FROM questions
 WHERE quiz_id=$1
 ORDER BY id ASC
@@ -584,22 +616,45 @@ exports.createQuestion = async (req, res) => {
   try {
 
     const {
-      quiz_id,
-      question,
-      options,
-      correct_answer
+  quiz_id,
+  question,
+  type,
+  options,
+  correct_answer,
+  points
     } = req.body;
 
     const result = await pool.query(
       `INSERT INTO questions
-      (quiz_id, question, options, correct_answer)
-      VALUES ($1,$2,$3::jsonb,$4)
-      RETURNING *`,
+(
+    quiz_id,
+    question,
+    type,
+    options,
+    correct_answer,
+    points
+)
+VALUES
+(
+    $1,
+    $2,
+    $3,
+    $4::jsonb,
+    $5,
+    $6
+)
+RETURNING *`,
       [
-        quiz_id,
-        question,
-        options ? JSON.stringify(options) : null,
-        correct_answer
+        
+    quiz_id,
+    question,
+    type || "multiple_choice",
+    options
+        ? JSON.stringify(options)
+        : null,
+    correct_answer || null,
+    points || 1
+
       ]
     );
 
