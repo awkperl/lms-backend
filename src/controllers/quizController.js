@@ -678,6 +678,94 @@ RETURNING *`,
 
   }
 };
+exports.getStudentHistory = async (req, res) => {
+
+    try {
+
+        const result = await pool.query(
+
+            `
+            SELECT
+
+                qa.id,
+
+                qa.quiz_id,
+
+                q.title,
+
+                qa.score,
+
+                qa.submitted,
+
+                qa.start_time,
+
+                qa.end_time,
+
+                qa.created_at,
+
+                COUNT(ques.id) AS total_questions
+
+            FROM quiz_attempts qa
+
+            JOIN quizzes q
+                ON q.id = qa.quiz_id
+
+            LEFT JOIN questions ques
+                ON ques.quiz_id = q.id
+
+            WHERE qa.student_id = $1
+
+            GROUP BY
+                qa.id,
+                q.title
+
+            ORDER BY qa.created_at DESC
+            `,
+
+            [req.user.id]
+
+        );
+
+        const history = result.rows.map(item => {
+
+            const total = Number(item.total_questions);
+
+            const score = Number(item.score || 0);
+
+            const percentage =
+                total === 0
+                    ? 0
+                    : Math.round(score * 100 / total);
+
+            return {
+
+                ...item,
+
+                percentage,
+
+                passed: percentage >= 50
+
+            };
+
+        });
+
+        res.json(history);
+
+    }
+
+    catch(err){
+
+        console.error(err);
+
+        res.status(500).json({
+
+            error: err.message
+
+        });
+
+    }
+
+};
 
 
 /**exports.createQuestion = async (req, res) => {

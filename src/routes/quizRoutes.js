@@ -85,6 +85,15 @@ router.delete(
 
 // GET QUIZZES
 router.get("/", auth, quizController.getQuizzes);
+router.get(
+
+    "/history",
+
+    auth,
+
+    quizController.getStudentHistory
+
+);
 
 // GET QUESTIONS
 router.get(
