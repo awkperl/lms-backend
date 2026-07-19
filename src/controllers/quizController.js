@@ -530,37 +530,44 @@ exports.submitQuiz = async (req, res) => {
     });
 
     // Save score
-    await pool.query(
-      `
-      UPDATE quiz_attempts
-      SET
-          score=$1,
-          submitted=TRUE
-      WHERE id=$2
-      `,
-      [
-        score,
-        attempt_id
-      ]
-    );
+   const updateResult = await pool.query(
+`
+UPDATE quiz_attempts
+SET
+    score = $1,
+    submitted = TRUE,
+    submitted_at = NOW()
+WHERE id = $2
+RETURNING *
+`,
+[
+    score,
+    attempt_id
+]
+);
 
-    res.json({
+const totalQuestions = answersRes.rows.length;
 
-      message: "Quiz submitted successfully",
+const percentage =
+    totalQuestions === 0
+        ? 0
+        : Math.round((score * 100) / totalQuestions);
 
-      totalQuestions: answersRes.rows.length,
+res.json({
 
-      score,
+    message: "Quiz submitted successfully",
 
-      percentage:
-        answersRes.rows.length === 0
-          ? 0
-          : Math.round(
-              score * 100 /
-              answersRes.rows.length
-            )
+    score,
 
-    });
+    totalQuestions,
+
+    percentage,
+
+    passed: percentage >= 50,
+
+    attempt: updateResult.rows[0]
+
+});
 
   } catch (err) {
 
