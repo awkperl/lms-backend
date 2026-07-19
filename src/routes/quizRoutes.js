@@ -94,6 +94,12 @@ router.get(
     quizController.getStudentHistory
 
 );
+router.get(
+    "/:quizId/attempts",
+    auth,
+    quizController.getQuizAttempts
+);
+
 
 // GET QUESTIONS
 router.get(

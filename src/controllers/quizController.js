@@ -757,7 +757,103 @@ exports.getStudentHistory = async (req, res) => {
     }
 
 };
+exports.getQuizAttempts = async (req, res) => {
 
+    try {
+
+        const { quizId } = req.params;
+
+        const attempts = await pool.query(
+
+            `
+            SELECT
+
+                qa.id,
+
+                qa.student_id,
+
+                u.name AS student_name,
+
+                q.title,
+
+                qa.score,
+
+                qa.submitted,
+
+                qa.start_time,
+
+                qa.end_time,
+
+                qa.submitted_at,
+
+                COUNT(ques.id) AS total_questions
+
+            FROM quiz_attempts qa
+
+            JOIN quizzes q
+                ON q.id = qa.quiz_id
+
+            JOIN users u
+                ON u.id = qa.student_id
+
+            LEFT JOIN questions ques
+                ON ques.quiz_id = qa.quiz_id
+
+            WHERE qa.quiz_id = $1
+
+            GROUP BY
+
+                qa.id,
+                u.name,
+                q.title
+
+            ORDER BY qa.submitted_at DESC
+            `,
+
+            [quizId]
+
+        );
+
+        const results = attempts.rows.map(row => {
+
+            const total = Number(row.total_questions);
+
+            const score = Number(row.score || 0);
+
+            const percentage =
+                total === 0
+                    ? 0
+                    : Math.round(score * 100 / total);
+
+            return {
+
+                ...row,
+
+                percentage,
+
+                passed: percentage >= 50
+
+            };
+
+        });
+
+        res.json(results);
+
+    }
+
+    catch (err) {
+
+        console.error(err);
+
+        res.status(500).json({
+
+            error: err.message
+
+        });
+
+    }
+
+};
 
 /**exports.createQuestion = async (req, res) => {
 
