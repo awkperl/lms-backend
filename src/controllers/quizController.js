@@ -685,41 +685,32 @@ exports.getStudentHistory = async (req, res) => {
         const result = await pool.query(
 
             `
-            SELECT
-
-                qa.id,
-
-                qa.quiz_id,
-
-                q.title,
-
-                qa.score,
-
-                qa.submitted,
-
-                qa.start_time,
-
-                qa.end_time,
-
-                qa.created_at,
-
-                COUNT(ques.id) AS total_questions
-
-            FROM quiz_attempts qa
-
-            JOIN quizzes q
-                ON q.id = qa.quiz_id
-
-            LEFT JOIN questions ques
-                ON ques.quiz_id = q.id
-
-            WHERE qa.student_id = $1
-
-            GROUP BY
-                qa.id,
-                q.title
-
-            ORDER BY qa.created_at DESC
+      SELECT
+      qa.id,
+      qa.quiz_id,
+      q.title,
+      qa.score,
+      qa.submitted,
+      qa.start_time,
+      qa.end_time,
+      qa.submitted_at,
+      COUNT(ques.id) AS total_questions
+  FROM quiz_attempts qa
+  JOIN quizzes q
+      ON q.id = qa.quiz_id
+  LEFT JOIN questions ques
+      ON ques.quiz_id = q.id
+  WHERE qa.student_id = $1
+  GROUP BY
+      qa.id,
+      qa.quiz_id,
+      q.title,
+      qa.score,
+      qa.submitted,
+      qa.start_time,
+      qa.end_time,
+      qa.submitted_at
+  ORDER BY qa.submitted_at DESC
             `,
 
             [req.user.id]
