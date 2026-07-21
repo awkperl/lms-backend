@@ -137,6 +137,16 @@ router.post(
   quizController.saveAnswer
 );
 
+router.put(
+
+    "/answer/:answerId/grade",
+
+    auth,
+
+    quizController.gradeEssayAnswer
+
+);
+
 // SUBMIT QUIZ
 router.post(
   "/submit",

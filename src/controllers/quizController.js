@@ -944,64 +944,69 @@ exports.getAttemptDetails = async (req, res) => {
         : Math.round((score * 100) / totalQuestions);
 
     // Load every question together with the student's answer
-    const questionsResult = await pool.query(
+ const questionsResult = await pool.query(
 
-      `
-      SELECT
+`
+SELECT
 
-          q.id,
+    q.id,
 
-          q.question,
+    q.question,
 
-          q.type,
+    q.type,
 
-          q.options,
+    q.options,
 
-          q.correct_answer,
+    q.correct_answer,
 
-          q.points,
+    q.points,
 
-          a.answer AS student_answer,
+    a.id AS answer_id,
 
-          CASE
+    a.answer AS student_answer,
 
-              WHEN q.type = 'essay'
+    a.awarded_points,
 
-              THEN NULL
+    CASE
 
-              WHEN LOWER(COALESCE(a.answer,'')) =
-                   LOWER(COALESCE(q.correct_answer,''))
+        WHEN q.type = 'essay'
 
-              THEN TRUE
+        THEN NULL
 
-              ELSE FALSE
+        WHEN LOWER(COALESCE(a.answer,'')) =
+             LOWER(COALESCE(q.correct_answer,''))
 
-          END AS is_correct
+        THEN TRUE
 
-      FROM questions q
+        ELSE FALSE
 
-      LEFT JOIN answers a
+    END AS is_correct
 
-      ON q.id = a.question_id
+FROM questions q
 
-      AND a.attempt_id = $1
+LEFT JOIN answers a
 
-      WHERE q.quiz_id = (
+ON q.id = a.question_id
 
-          SELECT quiz_id
+AND a.attempt_id = $1
 
-          FROM quiz_attempts
+WHERE q.quiz_id=(
 
-          WHERE id = $1
+    SELECT quiz_id
 
-      )
+    FROM quiz_attempts
 
-      ORDER BY q.id ASC
-      `,
+    WHERE id=$1
 
-      [attemptId]
+)
 
-    );
+ORDER BY q.id ASC
+
+`,
+
+[attemptId]
+
+);
 
     res.json({
 
@@ -1048,6 +1053,64 @@ exports.getAttemptDetails = async (req, res) => {
     });
 
   }
+
+};
+
+exports.gradeEssayAnswer = async (req, res) => {
+
+    try {
+
+        const { answerId } = req.params;
+
+        const { points } = req.body;
+
+        const result = await pool.query(
+
+            `
+            UPDATE answers
+            SET awarded_points = $1
+            WHERE id = $2
+            RETURNING *
+            `,
+
+            [
+                points,
+                answerId
+            ]
+
+        );
+
+        if (result.rows.length === 0) {
+
+            return res.status(404).json({
+
+                error: "Answer not found"
+
+            });
+
+        }
+
+        res.json({
+
+            message: "Essay graded successfully",
+
+            answer: result.rows[0]
+
+        });
+
+    }
+
+    catch (err) {
+
+        console.error(err);
+
+        res.status(500).json({
+
+            error: err.message
+
+        });
+
+    }
 
 };
 
