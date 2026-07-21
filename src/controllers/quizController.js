@@ -855,6 +855,202 @@ exports.getQuizAttempts = async (req, res) => {
 
 };
 
+// GET A SINGLE STUDENT ATTEMPT
+exports.getAttemptDetails = async (req, res) => {
+
+  try {
+
+    const { attemptId } = req.params;
+
+    // Get attempt summary
+    const attemptResult = await pool.query(
+
+      `
+      SELECT
+
+          qa.id,
+
+          qa.score,
+
+          qa.submitted,
+
+          qa.start_time,
+
+          qa.end_time,
+
+          qa.submitted_at,
+
+          q.title AS quiz_title,
+
+          u.name AS student_name,
+
+          COUNT(ques.id) AS total_questions
+
+      FROM quiz_attempts qa
+
+      JOIN quizzes q
+      ON qa.quiz_id = q.id
+
+      JOIN users u
+      ON qa.student_id = u.id
+
+      LEFT JOIN questions ques
+      ON ques.quiz_id = q.id
+
+      WHERE qa.id = $1
+
+      GROUP BY
+
+          qa.id,
+
+          qa.score,
+
+          qa.submitted,
+
+          qa.start_time,
+
+          qa.end_time,
+
+          qa.submitted_at,
+
+          q.title,
+
+          u.name
+      `,
+
+      [attemptId]
+
+    );
+
+    if (attemptResult.rows.length === 0) {
+
+      return res.status(404).json({
+
+        error: "Attempt not found."
+
+      });
+
+    }
+
+    const attempt = attemptResult.rows[0];
+
+    const totalQuestions = Number(attempt.total_questions);
+
+    const score = Number(attempt.score || 0);
+
+    const percentage =
+      totalQuestions === 0
+        ? 0
+        : Math.round((score * 100) / totalQuestions);
+
+    // Load every question together with the student's answer
+    const questionsResult = await pool.query(
+
+      `
+      SELECT
+
+          q.id,
+
+          q.question,
+
+          q.type,
+
+          q.options,
+
+          q.correct_answer,
+
+          q.points,
+
+          a.answer AS student_answer,
+
+          CASE
+
+              WHEN q.type = 'essay'
+
+              THEN NULL
+
+              WHEN LOWER(COALESCE(a.answer,'')) =
+                   LOWER(COALESCE(q.correct_answer,''))
+
+              THEN TRUE
+
+              ELSE FALSE
+
+          END AS is_correct
+
+      FROM questions q
+
+      LEFT JOIN answers a
+
+      ON q.id = a.question_id
+
+      AND a.attempt_id = $1
+
+      WHERE q.quiz_id = (
+
+          SELECT quiz_id
+
+          FROM quiz_attempts
+
+          WHERE id = $1
+
+      )
+
+      ORDER BY q.id ASC
+      `,
+
+      [attemptId]
+
+    );
+
+    res.json({
+
+      attempt: {
+
+        id: attempt.id,
+
+        student: attempt.student_name,
+
+        quiz: attempt.quiz_title,
+
+        score,
+
+        totalQuestions,
+
+        percentage,
+
+        passed: percentage >= 50,
+
+        submitted: attempt.submitted,
+
+        submitted_at: attempt.submitted_at,
+
+        start_time: attempt.start_time,
+
+        end_time: attempt.end_time
+
+      },
+
+      questions: questionsResult.rows
+
+    });
+
+  }
+
+  catch (err) {
+
+    console.error(err);
+
+    res.status(500).json({
+
+      error: err.message
+
+    });
+
+  }
+
+};
+
 /**exports.createQuestion = async (req, res) => {
 
   try {
