@@ -95,6 +95,16 @@ router.get(
 
 );
 router.get(
+
+    "/attempt/:attemptId",
+
+    auth,
+
+    quizController.getAttemptDetails
+
+);
+
+router.get(
     "/:quizId/attempts",
     auth,
     quizController.getQuizAttempts
