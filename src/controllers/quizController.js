@@ -1007,12 +1007,12 @@ ORDER BY q.id ASC
 [attemptId]
 
 );
-console.log(
+/**console.log(
     questionsResult.rows.map(q => ({
         answer_id: q.answer_id,
         awarded_points: q.awarded_points
     }))
-);
+);**/
 
     res.json({
 
