@@ -1007,6 +1007,12 @@ ORDER BY q.id ASC
 [attemptId]
 
 );
+console.log(
+    questionsResult.rows.map(q => ({
+        answer_id: q.answer_id,
+        awarded_points: q.awarded_points
+    }))
+);
 
     res.json({
 
@@ -1057,6 +1063,11 @@ ORDER BY q.id ASC
 };
 
 exports.gradeEssayAnswer = async (req, res) => {
+   console.log("Params:", req.params);
+
+        console.log("Body:", req.body);
+
+        const { answerId } = req.params;
 
     try {
 
