@@ -816,24 +816,52 @@ exports.getQuizAttempts = async (req, res) => {
 
         const results = attempts.rows.map(row => {
 
-            const total = Number(row.total_questions);
+            const results = await Promise.all(
 
-            const score = Number(row.score || 0);
+    attempts.rows.map(async (row) => {
 
-            const percentage =
-                total === 0
-                    ? 0
-                    : Math.round(score * 100 / total);
+        const pointsResult = await pool.query(
 
-            return {
+            `
+            SELECT COALESCE(SUM(points),0) AS total_points
+            FROM questions
+            WHERE quiz_id = $1
+            `,
 
-                ...row,
+            [quizId]
 
-                percentage,
+        );
 
-                passed: percentage >= 50
+        const totalPoints = Number(
+            pointsResult.rows[0].total_points
+        );
 
-            };
+        const score = Number(row.score || 0);
+
+        const percentage =
+            totalPoints === 0
+                ? 0
+                : Math.round(
+                    (score * 100) / totalPoints
+                );
+
+        return {
+
+            ...row,
+
+            total_points: totalPoints,
+
+            percentage,
+
+            passed: percentage >= 50
+
+        };
+
+    })
+
+);
+
+res.json(results);
 
         });
 
@@ -934,15 +962,35 @@ exports.getAttemptDetails = async (req, res) => {
 
     const attempt = attemptResult.rows[0];
 
-    const totalQuestions = Number(attempt.total_questions);
+   const pointsResult = await pool.query(
 
-    const score = Number(attempt.score || 0);
+`
+SELECT
+COALESCE(SUM(points),0) AS total_points
+FROM questions
+WHERE quiz_id = (
+    SELECT quiz_id
+    FROM quiz_attempts
+    WHERE id = $1
+)
+`,
 
-    const percentage =
-      totalQuestions === 0
+[attemptId]
+
+);
+
+const totalPoints = Number(
+    pointsResult.rows[0].total_points
+);
+
+const score = Number(attempt.score || 0);
+
+const percentage =
+    totalPoints === 0
         ? 0
-        : Math.round((score * 100) / totalQuestions);
-
+        : Math.round(
+            (score * 100) / totalPoints
+        );
     // Load every question together with the student's answer
  const questionsResult = await pool.query(
 
@@ -1026,10 +1074,9 @@ ORDER BY q.id ASC
 
         score,
 
-        totalQuestions,
+        totalPoints,
 
-        percentage,
-
+       percentage,
         passed: percentage >= 50,
 
         submitted: attempt.submitted,
