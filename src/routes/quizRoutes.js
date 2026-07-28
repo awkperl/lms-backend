@@ -54,6 +54,9 @@ const router = express.Router();
 
 const auth = require("../middleware/auth");
 const quizController = require("../controllers/quizController");
+const {
+    getAnalyticsOverview
+} = require("../controllers/quizAnalyticsController");
 
 router.post(
   "/",
@@ -145,6 +148,11 @@ router.put(
 
     quizController.gradeEssayAnswer
 
+);
+router.get(
+    "/analytics/overview",
+    authMiddleware,
+    getAnalyticsOverview
 );
 
 // SUBMIT QUIZ
