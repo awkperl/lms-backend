@@ -54,9 +54,7 @@ const router = express.Router();
 
 const auth = require("../middleware/auth");
 const quizController = require("../controllers/quizController");
-const {
-    getAnalyticsOverview
-} = require("../controllers/quizAnalyticsController");
+const getAnalyticsOverview = require("../controllers/quizAnalyticsController");
 
 router.post(
   "/",
