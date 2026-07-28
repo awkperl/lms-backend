@@ -760,66 +760,104 @@ exports.getStudentHistory = async (req, res) => {
         const result = await pool.query(
 
             `
-      SELECT
-      qa.id,
-      qa.quiz_id,
-      q.title,
-      qa.score,
-      qa.submitted,
-      qa.start_time,
-      qa.end_time,
-      qa.submitted_at,
-      COUNT(ques.id) AS total_questions
-  FROM quiz_attempts qa
-  JOIN quizzes q
-      ON q.id = qa.quiz_id
-  LEFT JOIN questions ques
-      ON ques.quiz_id = q.id
-  WHERE qa.student_id = $1
-  GROUP BY
-      qa.id,
-      qa.quiz_id,
-      q.title,
-      qa.score,
-      qa.submitted,
-      qa.start_time,
-      qa.end_time,
-      qa.submitted_at
-  ORDER BY qa.submitted_at DESC
+            SELECT
+
+                qa.id,
+
+                qa.quiz_id,
+
+                q.title,
+
+                qa.score,
+
+                qa.submitted,
+
+                qa.start_time,
+
+                qa.end_time,
+
+                qa.submitted_at
+
+            FROM quiz_attempts qa
+
+            JOIN quizzes q
+
+            ON q.id = qa.quiz_id
+
+            WHERE qa.student_id = $1
+
+            ORDER BY qa.submitted_at DESC
             `,
 
             [req.user.id]
 
         );
 
-        const history = result.rows.map(item => {
+        const history = await Promise.all(
 
-            const total = Number(item.total_questions);
+            result.rows.map(async (item) => {
 
-            const score = Number(item.score || 0);
+                const pointsResult = await pool.query(
 
-            const percentage =
-                total === 0
-                    ? 0
-                    : Math.round(score * 100 / total);
+                    `
+                    SELECT
 
-            return {
+                        COALESCE(SUM(points),0) AS total_points
 
-                ...item,
+                    FROM questions
 
-                percentage,
+                    WHERE quiz_id = $1
+                    `,
 
-                passed: percentage >= 50
+                    [item.quiz_id]
 
-            };
+                );
 
-        });
+                const totalPoints = Number(
+
+                    pointsResult.rows[0].total_points
+
+                );
+
+                const score = Number(
+
+                    item.score || 0
+
+                );
+
+                const percentage =
+
+                    totalPoints === 0
+
+                        ? 0
+
+                        : Math.round(
+
+                            (score * 100) / totalPoints
+
+                        );
+
+                return {
+
+                    ...item,
+
+                    totalPoints,
+
+                    percentage,
+
+                    passed: percentage >= 50
+
+                };
+
+            })
+
+        );
 
         res.json(history);
 
     }
 
-    catch(err){
+    catch (err) {
 
         console.error(err);
 
