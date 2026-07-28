@@ -85,7 +85,11 @@ router.delete(
   auth,
   quizController.deleteQuestion
 );
-
+router.get(
+    "/analytics/overview",
+    auth,
+    getAnalyticsOverview
+);
 // GET QUIZZES
 router.get("/", auth, quizController.getQuizzes);
 router.get(
@@ -149,11 +153,7 @@ router.put(
     quizController.gradeEssayAnswer
 
 );
-router.get(
-    "/analytics/overview",
-    authMiddleware,
-    getAnalyticsOverview
-);
+
 
 // SUBMIT QUIZ
 router.post(
