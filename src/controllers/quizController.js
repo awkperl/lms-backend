@@ -1087,6 +1087,67 @@ exports.gradeEssayAnswer = async (req, res) => {
             ]
 
         );
+        const attemptId = result.rows[0].attempt_id;
+
+// Recalculate the student's total earned points
+const totals = await pool.query(
+
+`
+SELECT
+
+COALESCE(
+
+SUM(
+
+CASE
+
+WHEN q.type = 'essay'
+
+THEN COALESCE(a.awarded_points,0)
+
+WHEN LOWER(COALESCE(a.answer,'')) =
+     LOWER(COALESCE(q.correct_answer,''))
+
+THEN q.points
+
+ELSE 0
+
+END
+
+),
+
+0
+
+) AS total_score
+
+FROM answers a
+
+JOIN questions q
+
+ON q.id = a.question_id
+
+WHERE a.attempt_id = $1
+`,
+
+[attemptId]
+
+);
+await pool.query(
+
+`
+UPDATE quiz_attempts
+
+SET score = $1
+
+WHERE id = $2
+`,
+
+[
+    Number(totals.rows[0].total_score),
+    attemptId
+]
+
+);
 
         if (result.rows.length === 0) {
 
