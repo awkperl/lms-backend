@@ -463,121 +463,196 @@ exports.saveAnswer = async (req, res) => {
 };
 
 exports.submitQuiz = async (req, res) => {
+
   try {
 
     const { attempt_id } = req.body;
 
     // Get attempt
     const attemptRes = await pool.query(
-      `SELECT *
-       FROM quiz_attempts
-       WHERE id=$1`,
+      `
+      SELECT *
+      FROM quiz_attempts
+      WHERE id = $1
+      `,
       [attempt_id]
     );
 
     if (attemptRes.rows.length === 0) {
+
       return res.status(404).json({
+
         msg: "Quiz attempt not found"
+
       });
+
     }
 
     const attempt = attemptRes.rows[0];
 
     // Prevent multiple submissions
     if (attempt.submitted) {
+
       return res.status(400).json({
+
         msg: "Quiz already submitted"
+
       });
+
     }
 
     // Time validation
     const now = new Date();
 
     if (attempt.end_time && now > attempt.end_time) {
+
       return res.status(400).json({
+
         msg: "Time expired"
+
       });
+
     }
 
-    // Get all saved answers
+    // Get all saved answers with question information
     const answersRes = await pool.query(
+
       `
       SELECT
+
           a.question_id,
+
           a.answer,
-          q.correct_answer
+
+          a.awarded_points,
+
+          q.correct_answer,
+
+          q.points,
+
+          q.type
+
       FROM answers a
+
       JOIN questions q
-      ON a.question_id=q.id
-      WHERE a.attempt_id=$1
+
+      ON a.question_id = q.id
+
+      WHERE a.attempt_id = $1
       `,
+
       [attempt_id]
+
     );
 
     let score = 0;
 
+    // Calculate earned points
     answersRes.rows.forEach(ans => {
 
-      if (
+      // Essay questions use instructor-awarded marks
+      if (ans.type === "essay") {
+
+        score += Number(ans.awarded_points || 0);
+
+      }
+
+      // Auto-marked questions
+      else if (
+
         ans.answer &&
         ans.correct_answer &&
         ans.answer.trim().toLowerCase() ===
         ans.correct_answer.trim().toLowerCase()
+
       ) {
-        score++;
+
+        score += Number(ans.points);
+
       }
 
     });
 
-    // Save score
-   const updateResult = await pool.query(
-`
-UPDATE quiz_attempts
-SET
-    score = $1,
-    submitted = TRUE,
-    submitted_at = NOW()
-WHERE id = $2
-RETURNING *
-`,
-[
-    score,
-    attempt_id
-]
-);
+    // Calculate total available points
+    const totalPoints = answersRes.rows.reduce(
 
-const totalQuestions = answersRes.rows.length;
+      (total, question) => {
 
-const percentage =
-    totalQuestions === 0
+        return total + Number(question.points || 0);
+
+      },
+
+      0
+
+    );
+
+    // Calculate percentage
+    const percentage =
+
+      totalPoints === 0
+
         ? 0
-        : Math.round((score * 100) / totalQuestions);
 
-res.json({
+        : Math.round((score * 100) / totalPoints);
 
-    message: "Quiz submitted successfully",
+    // Save score
+    const updateResult = await pool.query(
 
-    score,
+      `
+      UPDATE quiz_attempts
+      SET
 
-    totalQuestions,
+          score = $1,
 
-    percentage,
+          submitted = TRUE,
 
-    passed: percentage >= 50,
+          submitted_at = NOW()
 
-    attempt: updateResult.rows[0]
+      WHERE id = $2
 
-});
+      RETURNING *
+      `,
 
-  } catch (err) {
+      [
+
+        score,
+
+        attempt_id
+
+      ]
+
+    );
+
+    res.json({
+
+      message: "Quiz submitted successfully",
+
+      score,
+
+      totalPoints,
+
+      percentage,
+
+      passed: percentage >= 50,
+
+      attempt: updateResult.rows[0]
+
+    });
+
+  }
+
+  catch (err) {
 
     console.error(err);
 
     res.status(500).json({
+
       error: err.message
+
     });
 
   }
+
 };
 
 // GET QUIZ QUESTIONS
@@ -763,6 +838,7 @@ exports.getQuizAttempts = async (req, res) => {
 
         const { quizId } = req.params;
 
+        // Get all quiz attempts
         const attempts = await pool.query(
 
             `
@@ -784,28 +860,17 @@ exports.getQuizAttempts = async (req, res) => {
 
                 qa.end_time,
 
-                qa.submitted_at,
-
-                COUNT(ques.id) AS total_questions
+                qa.submitted_at
 
             FROM quiz_attempts qa
 
             JOIN quizzes q
-                ON q.id = qa.quiz_id
+            ON q.id = qa.quiz_id
 
             JOIN users u
-                ON u.id = qa.student_id
-
-            LEFT JOIN questions ques
-                ON ques.quiz_id = qa.quiz_id
+            ON u.id = qa.student_id
 
             WHERE qa.quiz_id = $1
-
-            GROUP BY
-
-                qa.id,
-                u.name,
-                q.title
 
             ORDER BY qa.submitted_at DESC
             `,
@@ -814,17 +879,16 @@ exports.getQuizAttempts = async (req, res) => {
 
         );
 
-        const results = attempts.rows.map(row => {
-
-            const results = await Promise.all(
-
-    attempts.rows.map(async (row) => {
-
+        // Get total available points for this quiz
         const pointsResult = await pool.query(
 
             `
-            SELECT COALESCE(SUM(points),0) AS total_points
+            SELECT
+
+                COALESCE(SUM(points),0) AS total_points
+
             FROM questions
+
             WHERE quiz_id = $1
             `,
 
@@ -836,32 +900,33 @@ exports.getQuizAttempts = async (req, res) => {
             pointsResult.rows[0].total_points
         );
 
-        const score = Number(row.score || 0);
+        const results = attempts.rows.map(row => {
 
-        const percentage =
-            totalPoints === 0
-                ? 0
-                : Math.round(
-                    (score * 100) / totalPoints
-                );
+            const score = Number(row.score || 0);
 
-        return {
+            const percentage =
 
-            ...row,
+                totalPoints === 0
 
-            total_points: totalPoints,
+                    ? 0
 
-            percentage,
+                    : Math.round(
 
-            passed: percentage >= 50
+                        (score * 100) / totalPoints
 
-        };
+                    );
 
-    })
+            return {
 
-);
+                ...row,
 
-res.json(results);
+                total_points: totalPoints,
+
+                percentage,
+
+                passed: percentage >= 50
+
+            };
 
         });
 
@@ -886,239 +951,229 @@ res.json(results);
 // GET A SINGLE STUDENT ATTEMPT
 exports.getAttemptDetails = async (req, res) => {
 
-  try {
+    try {
 
-    const { attemptId } = req.params;
+        const { attemptId } = req.params;
 
-    // Get attempt summary
-    const attemptResult = await pool.query(
+        // Get attempt summary
+        const attemptResult = await pool.query(
 
-      `
-      SELECT
+            `
+            SELECT
 
-          qa.id,
+                qa.id,
 
-          qa.score,
+                qa.score,
 
-          qa.submitted,
+                qa.submitted,
 
-          qa.start_time,
+                qa.start_time,
 
-          qa.end_time,
+                qa.end_time,
 
-          qa.submitted_at,
+                qa.submitted_at,
 
-          q.title AS quiz_title,
+                q.title AS quiz_title,
 
-          u.name AS student_name,
+                u.name AS student_name
 
-          COUNT(ques.id) AS total_questions
+            FROM quiz_attempts qa
 
-      FROM quiz_attempts qa
+            JOIN quizzes q
+            ON qa.quiz_id = q.id
 
-      JOIN quizzes q
-      ON qa.quiz_id = q.id
+            JOIN users u
+            ON qa.student_id = u.id
 
-      JOIN users u
-      ON qa.student_id = u.id
+            WHERE qa.id = $1
+            `,
 
-      LEFT JOIN questions ques
-      ON ques.quiz_id = q.id
+            [attemptId]
 
-      WHERE qa.id = $1
+        );
 
-      GROUP BY
+        if (attemptResult.rows.length === 0) {
 
-          qa.id,
+            return res.status(404).json({
 
-          qa.score,
+                error: "Attempt not found."
 
-          qa.submitted,
+            });
 
-          qa.start_time,
+        }
 
-          qa.end_time,
+        const attempt = attemptResult.rows[0];
 
-          qa.submitted_at,
+        // Get total available points for the quiz
+        const pointsResult = await pool.query(
 
-          q.title,
+            `
+            SELECT
 
-          u.name
-      `,
+                COALESCE(SUM(points),0) AS total_points
 
-      [attemptId]
+            FROM questions
 
-    );
+            WHERE quiz_id = (
 
-    if (attemptResult.rows.length === 0) {
+                SELECT quiz_id
 
-      return res.status(404).json({
+                FROM quiz_attempts
 
-        error: "Attempt not found."
+                WHERE id = $1
 
-      });
+            )
+            `,
+
+            [attemptId]
+
+        );
+
+        const totalPoints = Number(
+
+            pointsResult.rows[0].total_points
+
+        );
+
+        const score = Number(
+
+            attempt.score || 0
+
+        );
+
+        const percentage =
+
+            totalPoints === 0
+
+                ? 0
+
+                : Math.round(
+
+                    (score * 100) / totalPoints
+
+                );
+
+        // Load every question together with the student's answer
+        const questionsResult = await pool.query(
+
+            `
+            SELECT
+
+                q.id,
+
+                q.question,
+
+                q.type,
+
+                q.options,
+
+                q.correct_answer,
+
+                q.points,
+
+                a.id AS answer_id,
+
+                a.answer AS student_answer,
+
+                a.awarded_points,
+
+                CASE
+
+                    WHEN q.type = 'essay'
+
+                    THEN NULL
+
+                    WHEN LOWER(COALESCE(a.answer,'')) =
+                         LOWER(COALESCE(q.correct_answer,''))
+
+                    THEN TRUE
+
+                    ELSE FALSE
+
+                END AS is_correct
+
+            FROM questions q
+
+            LEFT JOIN answers a
+
+            ON q.id = a.question_id
+
+            AND a.attempt_id = $1
+
+            WHERE q.quiz_id = (
+
+                SELECT quiz_id
+
+                FROM quiz_attempts
+
+                WHERE id = $1
+
+            )
+
+            ORDER BY q.id ASC
+            `,
+
+            [attemptId]
+
+        );
+
+        res.json({
+
+            attempt: {
+
+                id: attempt.id,
+
+                student: attempt.student_name,
+
+                quiz: attempt.quiz_title,
+
+                score,
+
+                totalPoints,
+
+                percentage,
+
+                passed: percentage >= 50,
+
+                submitted: attempt.submitted,
+
+                submitted_at: attempt.submitted_at,
+
+                start_time: attempt.start_time,
+
+                end_time: attempt.end_time
+
+            },
+
+            questions: questionsResult.rows
+
+        });
 
     }
 
-    const attempt = attemptResult.rows[0];
+    catch (err) {
 
-   const pointsResult = await pool.query(
+        console.error(err);
 
-`
-SELECT
-COALESCE(SUM(points),0) AS total_points
-FROM questions
-WHERE quiz_id = (
-    SELECT quiz_id
-    FROM quiz_attempts
-    WHERE id = $1
-)
-`,
+        res.status(500).json({
 
-[attemptId]
+            error: err.message
 
-);
+        });
 
-const totalPoints = Number(
-    pointsResult.rows[0].total_points
-);
-
-const score = Number(attempt.score || 0);
-
-const percentage =
-    totalPoints === 0
-        ? 0
-        : Math.round(
-            (score * 100) / totalPoints
-        );
-    // Load every question together with the student's answer
- const questionsResult = await pool.query(
-
-`
-SELECT
-
-    q.id,
-
-    q.question,
-
-    q.type,
-
-    q.options,
-
-    q.correct_answer,
-
-    q.points,
-
-    a.id AS answer_id,
-
-    a.answer AS student_answer,
-
-    a.awarded_points,
-
-    CASE
-
-        WHEN q.type = 'essay'
-
-        THEN NULL
-
-        WHEN LOWER(COALESCE(a.answer,'')) =
-             LOWER(COALESCE(q.correct_answer,''))
-
-        THEN TRUE
-
-        ELSE FALSE
-
-    END AS is_correct
-
-FROM questions q
-
-LEFT JOIN answers a
-
-ON q.id = a.question_id
-
-AND a.attempt_id = $1
-
-WHERE q.quiz_id=(
-
-    SELECT quiz_id
-
-    FROM quiz_attempts
-
-    WHERE id=$1
-
-)
-
-ORDER BY q.id ASC
-
-`,
-
-[attemptId]
-
-);
-/**console.log(
-    questionsResult.rows.map(q => ({
-        answer_id: q.answer_id,
-        awarded_points: q.awarded_points
-    }))
-);**/
-
-    res.json({
-
-      attempt: {
-
-        id: attempt.id,
-
-        student: attempt.student_name,
-
-        quiz: attempt.quiz_title,
-
-        score,
-
-        totalPoints,
-
-       percentage,
-        passed: percentage >= 50,
-
-        submitted: attempt.submitted,
-
-        submitted_at: attempt.submitted_at,
-
-        start_time: attempt.start_time,
-
-        end_time: attempt.end_time
-
-      },
-
-      questions: questionsResult.rows
-
-    });
-
-  }
-
-  catch (err) {
-
-    console.error(err);
-
-    res.status(500).json({
-
-      error: err.message
-
-    });
-
-  }
+    }
 
 };
 
 exports.gradeEssayAnswer = async (req, res) => {
-    try {
-         console.log("Params:", req.params);
 
-        console.log("Body:", req.body);
+    try {
 
         const { answerId } = req.params;
 
         const { points } = req.body;
 
+        // Update awarded marks
         const result = await pool.query(
 
             `
@@ -1129,72 +1184,14 @@ exports.gradeEssayAnswer = async (req, res) => {
             `,
 
             [
+
                 points,
+
                 answerId
+
             ]
 
         );
-        const attemptId = result.rows[0].attempt_id;
-
-// Recalculate the student's total earned points
-const totals = await pool.query(
-
-`
-SELECT
-
-COALESCE(
-
-SUM(
-
-CASE
-
-WHEN q.type = 'essay'
-
-THEN COALESCE(a.awarded_points,0)
-
-WHEN LOWER(COALESCE(a.answer,'')) =
-     LOWER(COALESCE(q.correct_answer,''))
-
-THEN q.points
-
-ELSE 0
-
-END
-
-),
-
-0
-
-) AS total_score
-
-FROM answers a
-
-JOIN questions q
-
-ON q.id = a.question_id
-
-WHERE a.attempt_id = $1
-`,
-
-[attemptId]
-
-);
-await pool.query(
-
-`
-UPDATE quiz_attempts
-
-SET score = $1
-
-WHERE id = $2
-`,
-
-[
-    Number(totals.rows[0].total_score),
-    attemptId
-]
-
-);
 
         if (result.rows.length === 0) {
 
@@ -1206,9 +1203,86 @@ WHERE id = $2
 
         }
 
+        const attemptId = result.rows[0].attempt_id;
+
+        // Recalculate total earned points
+        const totals = await pool.query(
+
+            `
+            SELECT
+
+                COALESCE(
+
+                    SUM(
+
+                        CASE
+
+                            WHEN q.type = 'essay'
+
+                            THEN COALESCE(a.awarded_points,0)
+
+                            WHEN LOWER(COALESCE(a.answer,'')) =
+                                 LOWER(COALESCE(q.correct_answer,''))
+
+                            THEN q.points
+
+                            ELSE 0
+
+                        END
+
+                    ),
+
+                    0
+
+                ) AS total_score
+
+            FROM answers a
+
+            JOIN questions q
+
+            ON q.id = a.question_id
+
+            WHERE a.attempt_id = $1
+            `,
+
+            [
+
+                attemptId
+
+            ]
+
+        );
+
+        const newScore = Number(
+
+            totals.rows[0].total_score
+
+        );
+
+        // Update quiz attempt score
+        await pool.query(
+
+            `
+            UPDATE quiz_attempts
+            SET score = $1
+            WHERE id = $2
+            `,
+
+            [
+
+                newScore,
+
+                attemptId
+
+            ]
+
+        );
+
         res.json({
 
             message: "Essay graded successfully",
+
+            score: newScore,
 
             answer: result.rows[0]
 
