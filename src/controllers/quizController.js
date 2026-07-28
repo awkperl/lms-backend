@@ -1063,13 +1063,10 @@ ORDER BY q.id ASC
 };
 
 exports.gradeEssayAnswer = async (req, res) => {
-   console.log("Params:", req.params);
+    try {
+         console.log("Params:", req.params);
 
         console.log("Body:", req.body);
-
-        const { answerId } = req.params;
-
-    try {
 
         const { answerId } = req.params;
 
