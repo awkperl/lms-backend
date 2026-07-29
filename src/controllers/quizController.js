@@ -1341,6 +1341,164 @@ exports.gradeEssayAnswer = async (req, res) => {
     }
 
 };
+// GET QUIZ ANALYTICS OVERVIEW
+exports.getQuizAnalytics = async (req, res) => {
+
+    try {
+
+        const { quizId } = req.params;
+
+        // Total available quiz points
+        const pointsResult = await pool.query(
+
+            `
+            SELECT
+
+                COALESCE(SUM(points),0) AS total_points
+
+            FROM questions
+
+            WHERE quiz_id = $1
+            `,
+
+            [quizId]
+
+        );
+
+        const totalPoints = Number(
+            pointsResult.rows[0].total_points
+        );
+
+        // Quiz attempts
+        const attemptsResult = await pool.query(
+
+            `
+            SELECT
+
+                score
+
+            FROM quiz_attempts
+
+            WHERE
+
+                quiz_id = $1
+
+            AND
+
+                submitted = TRUE
+            `,
+
+            [quizId]
+
+        );
+
+        const attempts = attemptsResult.rows;
+
+        const totalAttempts = attempts.length;
+
+        if (totalAttempts === 0) {
+
+            return res.json({
+
+                totalAttempts: 0,
+
+                averageScore: 0,
+
+                highestScore: 0,
+
+                lowestScore: 0,
+
+                passRate: 0,
+
+                totalPoints
+
+            });
+
+        }
+
+        const scores = attempts.map(
+
+            a => Number(a.score)
+
+        );
+
+        const highestScore = Math.max(...scores);
+
+        const lowestScore = Math.min(...scores);
+
+        const averageRaw =
+
+            scores.reduce(
+
+                (sum, score) => sum + score,
+
+                0
+
+            ) / totalAttempts;
+
+        const averageScore =
+
+            totalPoints === 0
+
+                ? 0
+
+                : Math.round(
+
+                    (averageRaw * 100) / totalPoints
+
+                );
+
+        const passedStudents =
+
+            scores.filter(
+
+                score =>
+
+                    totalPoints > 0 &&
+
+                    ((score * 100) / totalPoints) >= 50
+
+            ).length;
+
+        const passRate = Math.round(
+
+            (passedStudents * 100) /
+
+            totalAttempts
+
+        );
+
+        res.json({
+
+            totalAttempts,
+
+            totalPoints,
+
+            averageScore,
+
+            highestScore,
+
+            lowestScore,
+
+            passRate
+
+        });
+
+    }
+
+    catch (err) {
+
+        console.error(err);
+
+        res.status(500).json({
+
+            error: err.message
+
+        });
+
+    }
+
+};
 
 /**exports.createQuestion = async (req, res) => {
 

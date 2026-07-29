@@ -98,6 +98,15 @@ router.get(
     auth,
     getAnalyticsOverview
 );
+router.get(
+
+    "/:quizId/analytics",
+
+    auth,
+
+    quizController.getQuizAnalytics
+
+);
 // GET QUIZZES
 router.get("/", auth, quizController.getQuizzes);
 router.get(
