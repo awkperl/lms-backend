@@ -72,7 +72,7 @@ exports.getCourseStudents = async (req, res) => {
             FROM enrollments e
 
             JOIN users u
-            ON u.id = e.student_id
+            ON u.id = e.user_id
 
             WHERE e.course_id = $1
 
