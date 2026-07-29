@@ -60,42 +60,68 @@ exports.getCourseStudents = async (req, res) => {
 
         const result = await pool.query(
 
-            `
-            SELECT
+`
+SELECT
 
-                u.id AS student_id,
+    u.id AS student_id,
 
-                u.name AS student_name,
+    u.name AS student_name,
 
-                u.email,
+    u.email,
 
-                COUNT(DISTINCT q.id) AS total_quizzes,
+    COUNT(DISTINCT q.id) AS total_quizzes,
 
-                COUNT(DISTINCT qa.quiz_id) AS passed_quizzes
+    COUNT(DISTINCT CASE
 
-            FROM enrollments e
+        WHEN best.best_score >= (
+            SELECT COALESCE(SUM(points),0) * 0.5
+            FROM questions
+            WHERE quiz_id = q.id
+        )
 
-            JOIN users u
-            ON u.id = e.user_id
+        THEN q.id
 
-            LEFT JOIN quizzes q
-            ON q.course_id = e.course_id
+    END) AS passed_quizzes
 
-            LEFT JOIN quiz_attempts qa
-            ON qa.quiz_id = q.id
-            AND qa.student_id = u.id
-            AND qa.submitted = TRUE
+FROM enrollments e
 
-            WHERE e.course_id = $1
+JOIN users u
+ON u.id = e.user_id
 
-            GROUP BY
+LEFT JOIN quizzes q
+ON q.course_id = e.course_id
 
-                u.id,
-                u.name,
-                u.email
+LEFT JOIN (
 
-            ORDER BY u.name
-            `,
+    SELECT
+
+        student_id,
+
+        quiz_id,
+
+        MAX(score) AS best_score
+
+    FROM quiz_attempts
+
+    WHERE submitted = TRUE
+
+    GROUP BY student_id, quiz_id
+
+) best
+
+ON best.student_id = u.id
+AND best.quiz_id = q.id
+
+WHERE e.course_id = $1
+
+GROUP BY
+
+    u.id,
+    u.name,
+    u.email
+
+ORDER BY u.name
+`,
 
             [courseId]
 
