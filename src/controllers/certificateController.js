@@ -1,3 +1,4 @@
+const pool = require("../config/db");
 exports.generateCertificate = async (req, res) => {
 
     try {
