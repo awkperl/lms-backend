@@ -67,14 +67,32 @@ exports.getCourseStudents = async (req, res) => {
 
                 u.name AS student_name,
 
-                u.email
+                u.email,
+
+                COUNT(DISTINCT q.id) AS total_quizzes,
+
+                COUNT(DISTINCT qa.quiz_id) AS passed_quizzes
 
             FROM enrollments e
 
             JOIN users u
             ON u.id = e.user_id
 
+            LEFT JOIN quizzes q
+            ON q.course_id = e.course_id
+
+            LEFT JOIN quiz_attempts qa
+            ON qa.quiz_id = q.id
+            AND qa.student_id = u.id
+            AND qa.submitted = TRUE
+
             WHERE e.course_id = $1
+
+            GROUP BY
+
+                u.id,
+                u.name,
+                u.email
 
             ORDER BY u.name
             `,
@@ -83,7 +101,17 @@ exports.getCourseStudents = async (req, res) => {
 
         );
 
-        res.json(result.rows);
+        const students = result.rows.map(student => ({
+
+            ...student,
+
+            quizzes_completed:
+                Number(student.total_quizzes) ===
+                Number(student.passed_quizzes)
+
+        }));
+
+        res.json(students);
 
     }
 
