@@ -54,7 +54,10 @@ const router = express.Router();
 
 const auth = require("../middleware/auth");
 const quizController = require("../controllers/quizController");
-const getAnalyticsOverview = require("../controllers/quizAnalyticsController");
+const {
+    getAnalyticsOverview,
+    getQuizPerformance
+} = require("../controllers/quizAnalyticsController");
 
 router.post(
   "/",
@@ -83,6 +86,13 @@ router.delete(
   auth,
   quizController.deleteQuestion
 );
+
+router.get(
+    "/analytics/performance",
+    auth,
+    getQuizPerformance
+);
+
 router.get(
     "/analytics/overview",
     auth,

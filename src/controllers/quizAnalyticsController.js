@@ -172,3 +172,108 @@ exports.getAnalyticsOverview = async (req, res) => {
     }
 
 };
+// GET QUIZ PERFORMANCE
+exports.getQuizPerformance = async (req, res) => {
+
+    try {
+
+        const result = await pool.query(
+
+            `
+            SELECT
+
+                q.id,
+                q.title,
+
+                COUNT(DISTINCT qa.id) AS attempts,
+
+                ROUND(
+
+                    AVG(
+
+                        CASE
+
+                            WHEN totals.total_points = 0
+
+                            THEN 0
+
+                            ELSE (qa.score * 100.0 / totals.total_points)
+
+                        END
+
+                    )
+
+                ) AS average_score,
+
+                ROUND(
+
+                    AVG(
+
+                        CASE
+
+                            WHEN totals.total_points = 0
+
+                            THEN 0
+
+                            WHEN (qa.score * 100.0 / totals.total_points) >= 50
+
+                            THEN 100
+
+                            ELSE 0
+
+                        END
+
+                    )
+
+                ) AS pass_rate
+
+            FROM quizzes q
+
+            LEFT JOIN quiz_attempts qa
+
+                ON qa.quiz_id = q.id
+                AND qa.submitted = true
+
+            LEFT JOIN (
+
+                SELECT
+
+                    quiz_id,
+
+                    COALESCE(SUM(points),0) AS total_points
+
+                FROM questions
+
+                GROUP BY quiz_id
+
+            ) totals
+
+                ON totals.quiz_id = q.id
+
+            GROUP BY
+
+                q.id,
+                q.title,
+                totals.total_points
+
+            ORDER BY q.title
+            `
+        );
+
+        res.json(result.rows);
+
+    }
+
+    catch (err) {
+
+        console.error(err);
+
+        res.status(500).json({
+
+            error: err.message
+
+        });
+
+    }
+
+};
