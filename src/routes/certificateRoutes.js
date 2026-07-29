@@ -1,16 +1,29 @@
-const express=require("express");
+const express = require("express");
 
-const router=express.Router();
+const router = express.Router();
 
-const auth=require("../middleware/auth");
+const auth = require("../middleware/auth");
 
-const certificateController=
-require("../controllers/certificateController");
+const certificateController = require("../controllers/certificateController");
 
 router.get(
-"/",
-auth,
-certificateController.getCertificates
+
+    "/course/:courseId",
+
+    auth,
+
+    certificateController.getCourseStudents
+
 );
 
-module.exports=router;
+router.post(
+
+    "/generate",
+
+    auth,
+
+    certificateController.generateCertificate
+
+);
+
+module.exports = router;

@@ -1,77 +1,101 @@
-const pool = require("../config/db");
+exports.generateCertificate = async (req, res) => {
 
-exports.getCertificates = async (req,res)=>{
+    try {
 
-try{
+        const { courseId, studentId } = req.body;
 
-const userId=req.user.id;
+        const certificateNumber =
+            "CERT-" + Date.now();
 
-const result=await pool.query(
+        const result = await pool.query(
 
-`
-SELECT
+            `
+            INSERT INTO certificates
+            (
+                student_id,
+                course_id,
+                certificate_number
+            )
+            VALUES ($1, $2, $3)
+            RETURNING *
+            `,
 
-c.id as course_id,
-c.title as course_title,
-u.name as student_name,
+            [
+                studentId,
+                courseId,
+                certificateNumber
+            ]
 
-ROUND(
-AVG(
-COALESCE(
-s.score,0
-)
-)
-) as final_score
+        );
 
-FROM courses c
+        res.json({
 
-JOIN enrollments e
-ON c.id=e.course_id
+            message: "Certificate generated successfully.",
 
-JOIN users u
-ON u.id=e.user_id
+            certificate: result.rows[0]
 
-LEFT JOIN assignments a
-ON a.course_id=c.id
+        });
 
-LEFT JOIN submissions s
-ON s.assignment_id=a.id
-AND s.student_id=u.id
+    }
 
-WHERE e.user_id=$1
+    catch (err) {
 
-GROUP BY
-c.id,
-c.title,
-u.name
-`,
-[userId]
+        console.error(err);
 
-);
+        res.status(500).json({
 
-const certificates=
-result.rows.map(course=>({
+            error: err.message
 
-...course,
+        });
 
-certificate_id:
-"CERT-"+Date.now()+"-"+Math.floor(
-Math.random()*1000
-),
+    }
 
-completion_date:
-new Date()
+};
+exports.getCourseStudents = async (req, res) => {
 
-}));
+    try {
 
-res.json(certificates);
+        const { courseId } = req.params;
 
-}catch(err){
+        const result = await pool.query(
 
-res.status(500).json({
-error:err.message
-});
+            `
+            SELECT
 
-}
+                u.id AS student_id,
+
+                u.name AS student_name,
+
+                u.email
+
+            FROM enrollments e
+
+            JOIN users u
+            ON u.id = e.student_id
+
+            WHERE e.course_id = $1
+
+            ORDER BY u.name
+            `,
+
+            [courseId]
+
+        );
+
+        res.json(result.rows);
+
+    }
+
+    catch (err) {
+
+        console.error(err);
+
+        res.status(500).json({
+
+            error: err.message
+
+        });
+
+    }
 
 };
